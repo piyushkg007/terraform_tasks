@@ -1,0 +1,58 @@
+name: tf
+
+trigger:
+ branches:
+    include:
+      - "*"
+    exclude:
+      - main
+ paths:
+    include:
+      - "give/path/here"
+
+pr:
+ branches:
+    include:
+      - "*"
+ paths:
+   include:
+     - "give/path/here"
+pool: poolname
+
+parameters:
+  - name: OWNER
+    type: boolean
+    default: true
+  
+  - name: OPERATOR
+    type: boolean
+    default: true
+
+resources:
+ repositories:
+   - repository: templates
+     type: git
+     name: name of repo
+stages:
+  - stage: validateonpushandpropen
+    jobs:
+      - job: validate
+        steps:
+          - template: terraform-template.yaml@templates 
+            parameters:
+              APPLY: false
+              TRIGGER_FOLDER: ${{ paramerters.TRIGGER_FOLDER }}
+              CONFIG_FOLDER: ${{ parameters.CONFIG_FOLDER }}
+              BACKEND_FOLDER: ${{ parameters.BACKEND_FOLDER }}
+  - stage: Validatingpush
+    dependsOn: validateonpushandpropen
+    condition: and(ne(variables['Build.SourceBranchName'], 'main'),ne(variables['Build.Reason'],'PullRequest'), succeeded('validateonpushandpropen'))
+    jobs:
+      - job: requestforapprove
+        pool: server
+        steps:
+          - template: sysops-manual-validation.yaml@templates
+            parameters:
+              OWNER: true
+              OPERATOR: false
+
